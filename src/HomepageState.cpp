@@ -10,7 +10,11 @@ std::unique_ptr<GameState> HomepageState::onClick(Game &game, int x, int y)
     if (game.onePlayerButton.isClicked(x, y))
         next = std::make_unique<OnePlayerState>();
     if (game.twoPlayerButton.isClicked(x, y))
+    {
+        game.citScore = 0;
+        game.coeScore = 0;
         next = std::make_unique<TwoPlayerState>();
+    }
     return next;
 }
 

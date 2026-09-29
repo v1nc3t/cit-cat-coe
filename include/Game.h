@@ -6,6 +6,7 @@
 #include "Player.h"
 
 #include "Sdl.h"
+#include "SdlTtf.h"
 
 #include <map>
 #include <memory>
@@ -16,10 +17,18 @@ constexpr int SCREEN_HEIGHT = 600;
 
 class Game {
     SDL_Window *window_ = nullptr;
+    TTF_Font *font_ = nullptr;
+    TTF_Font *winFont_ = nullptr;
     bool sdlReady_ = false;
+    bool ttfReady_ = false;
     bool vsync_ = false;
 
 public:
+    struct ScoreLabel {
+        SDL_Texture *texture = nullptr;
+        int shown = -1;
+    };
+
     SDL_Renderer *renderer = nullptr;
     std::map<std::string, SDL_Texture *> textures;
 
@@ -40,9 +49,17 @@ public:
 
     Board board;
     Player player;
+    int citScore = 0;
+    int coeScore = 0;
+    ScoreLabel citScoreLabel;
+    ScoreLabel coeScoreLabel;
+    SDL_Texture *citWinText = nullptr;
+    SDL_Texture *coeWinText = nullptr;
     std::unique_ptr<GameState> state;
 
     ~Game();
     bool init();
     void run();
+    void renderScore(ScoreLabel &label, int score, const SDL_Rect &image);
+    void renderFitted(SDL_Texture *texture, const SDL_Rect &area);
 };

@@ -11,7 +11,7 @@ Windows (64-bit MinGW). SDL2 is already in `src/include` and `src/lib`.
 1. Install [MSYS2](https://www.msys2.org/), then a 64-bit toolchain:
 
 ```
-pacman -S mingw-w64-x86_64-gcc make
+pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-SDL2_ttf make
 ```
 
 2. From the project root:
@@ -25,7 +25,7 @@ That produces `CitCatCoe.exe`. The exe icon comes from `resources.rc`. `make` re
 Linux. SDL2 comes from the system, not the MinGW copy in `src/lib`.
 
 ```
-sudo apt install g++ make libsdl2-dev pkg-config
+sudo apt install g++ make libsdl2-dev libsdl2-ttf-dev pkg-config
 make
 ```
 
@@ -49,7 +49,7 @@ Linux:
 
 On the title screen, choose a mode.
 
-- **Two player:** click an empty cell. Cit is O, Coe is X. A line marks a win. A full board with no three-in-a-row is a draw. Play again resets the board. Back returns to the title screen.
+- **Two player:** click an empty cell. Cit is O, Coe is X. A line marks a win, and that player's score under the portrait goes up by one. A full board with no three-in-a-row is a draw. Play again clears the board and keeps the score. Back returns to the title screen. The next match starts at 0.
 - **One player:** the screen stays empty. Use the window close button to quit.
 
 ## Description
@@ -62,7 +62,7 @@ The window is 800 by 600. The playfield is a 300 by 300 grid in the center. Cell
 | 1 | X (Coe) |
 | -1 | Empty |
 
-A win is three of the same mark in a row, column, or either diagonal. The current player is shown with the `*_turn` images. The winner is shown with the `*_win` image.
+A win is three of the same mark in a row, column, or either diagonal. The current player is shown with the `*_turn` images. The winner's portrait is replaced by the text CIT WINS or COE WINS, set in Liberation Mono. Scores under the portraits use Roboto. Both files are in `assets/fonts/`.
 
 Before the window opens, `main` checks those rules (wins, a draw, and a filled cell). If that check fails, the program exits and prints `board rules check failed`.
 

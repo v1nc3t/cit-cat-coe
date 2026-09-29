@@ -4,7 +4,9 @@
 #include "HomepageState.h"
 #include "SdlBoardBuilder.h"
 
+#include <algorithm>
 #include <iostream>
+#include <string>
 
 namespace
 {
@@ -20,6 +22,34 @@ SDL_Texture *loadImage(SDL_Renderer *renderer, const char *filePath)
     SDL_FreeSurface(surface);
     return texture;
 }
+
+TTF_Font *openFont(const char *const *paths, int count, int size)
+{
+    for (int i = 0; i < count; i++)
+    {
+        if (TTF_Font *font = TTF_OpenFont(paths[i], size))
+            return font;
+    }
+    return nullptr;
+}
+
+SDL_Texture *makeText(SDL_Renderer *renderer, TTF_Font *font, const char *text)
+{
+    const SDL_Color white = {255, 255, 255, 255};
+    SDL_Surface *surface = TTF_RenderText_Blended(font, text, white);
+    if (!surface)
+        return nullptr;
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_FreeSurface(surface);
+    return texture;
+}
+
+void destroyScore(Game::ScoreLabel &label)
+{
+    if (label.texture)
+        SDL_DestroyTexture(label.texture);
+    label.texture = nullptr;
+}
 }
 
 Game::~Game()
@@ -30,12 +60,28 @@ Game::~Game()
             SDL_DestroyTexture(pair.second);
     }
     textures.clear();
+    destroyScore(citScoreLabel);
+    destroyScore(coeScoreLabel);
+    if (citWinText)
+        SDL_DestroyTexture(citWinText);
+    if (coeWinText)
+        SDL_DestroyTexture(coeWinText);
+    citWinText = nullptr;
+    coeWinText = nullptr;
+    if (winFont_)
+        TTF_CloseFont(winFont_);
+    if (font_)
+        TTF_CloseFont(font_);
+    winFont_ = nullptr;
+    font_ = nullptr;
     if (renderer)
         SDL_DestroyRenderer(renderer);
     if (window_)
         SDL_DestroyWindow(window_);
     renderer = nullptr;
     window_ = nullptr;
+    if (ttfReady_)
+        TTF_Quit();
     if (sdlReady_)
         SDL_Quit();
 }
@@ -48,6 +94,31 @@ bool Game::init()
         return false;
     }
     sdlReady_ = true;
+
+    if (TTF_Init() < 0)
+    {
+        std::cerr << "SDL_ttf could not initialize! TTF_Error: " << TTF_GetError() << std::endl;
+        return false;
+    }
+    ttfReady_ = true;
+    const char *scoreFonts[] = {
+        "assets/fonts/Roboto-Regular.ttf",
+        "/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Regular.ttf",
+        "C:/Windows/Fonts/Roboto-Regular.ttf",
+    };
+    const char *winFonts[] = {
+        "assets/fonts/LiberationMono-Regular.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        "C:/Windows/Fonts/cour.ttf",
+    };
+    font_ = openFont(scoreFonts, sizeof(scoreFonts) / sizeof(scoreFonts[0]), 42);
+    winFont_ = openFont(winFonts, sizeof(winFonts) / sizeof(winFonts[0]), 28);
+    if (!font_ || !winFont_)
+    {
+        std::cerr << "Could not open Roboto or the typewriter font in assets/fonts." << std::endl;
+        return false;
+    }
 
     window_ = SDL_CreateWindow("Cit Cat Coe", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     if (!window_)
@@ -89,10 +160,8 @@ bool Game::init()
         {"playAgain", "assets/playAgain.bmp"},
         {"cit", "assets/cit.bmp"},
         {"cit_turn", "assets/cit_turn.bmp"},
-        {"cit_win", "assets/cit_win.bmp"},
         {"coe", "assets/coe.bmp"},
         {"coe_turn", "assets/coe_turn.bmp"},
-        {"coe_win", "assets/coe_win.bmp"},
     };
     for (const auto &asset : assets)
         textures[asset.key] = loadImage(renderer, asset.path);
@@ -121,6 +190,14 @@ bool Game::init()
     twoPlayerButton = Button(twoPlayerRect, white);
     backButton = Button(backRect, black);
     playAgainButton = Button(playAgainRect, black);
+
+    citWinText = makeText(renderer, winFont_, "CIT WINS");
+    coeWinText = makeText(renderer, winFont_, "COE WINS");
+    if (!citWinText || !coeWinText)
+    {
+        std::cerr << "Could not render win text. TTF_Error: " << TTF_GetError() << std::endl;
+        return false;
+    }
 
     SdlBoardBuilder builder;
     board = BoardDirector(builder).makePlayfield(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -151,4 +228,43 @@ void Game::run()
         if (!vsync_)
             SDL_Delay(16); // ponytail: fixed 16ms sleep when the driver has no vsync
     }
+}
+
+void Game::renderScore(ScoreLabel &label, int score, const SDL_Rect &image)
+{
+    if (score != label.shown)
+    {
+        destroyScore(label);
+        const SDL_Color white = {255, 255, 255, 255};
+        SDL_Surface *surface = TTF_RenderText_Blended(font_, std::to_string(score).c_str(), white);
+        if (surface)
+        {
+            label.texture = SDL_CreateTextureFromSurface(renderer, surface);
+            SDL_FreeSurface(surface);
+        }
+        label.shown = score;
+    }
+    if (!label.texture)
+        return;
+    int width = 0;
+    int height = 0;
+    SDL_QueryTexture(label.texture, nullptr, nullptr, &width, &height);
+    SDL_Rect dest = {image.x + (image.w - width) / 2, image.y + image.h + 12, width, height};
+    SDL_RenderCopy(renderer, label.texture, nullptr, &dest);
+}
+
+void Game::renderFitted(SDL_Texture *texture, const SDL_Rect &area)
+{
+    if (!texture)
+        return;
+    int width = 0;
+    int height = 0;
+    SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);
+    if (width <= 0 || height <= 0)
+        return;
+    const float scale = std::min((area.w - 8) / static_cast<float>(width), (area.h - 8) / static_cast<float>(height));
+    const int destW = static_cast<int>(width * scale);
+    const int destH = static_cast<int>(height * scale);
+    const SDL_Rect dest = {area.x + (area.w - destW) / 2, area.y + (area.h - destH) / 2, destW, destH};
+    SDL_RenderCopy(renderer, texture, nullptr, &dest);
 }
