@@ -17,18 +17,7 @@ std::unique_ptr<GameState> PlayState::onClick(Game &game, int x, int y)
     {
         int row, col;
         game.board.findCell(x, y, row, col);
-        if (game.board.fillCell(row, col, game.player.mark))
-        {
-            if (game.board.checkWin(game.player))
-            {
-                game.player.setWinner();
-                if (game.player.winner == MARK_O)
-                    game.citScore++;
-                else
-                    game.coeScore++;
-            }
-            game.player.switchPlayer();
-        }
+        game.placeMark(row, col);
     }
     return next;
 }

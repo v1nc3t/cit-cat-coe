@@ -55,6 +55,10 @@ public:
     ScoreLabel coeScoreLabel;
     SDL_Texture *citWinText = nullptr;
     SDL_Texture *coeWinText = nullptr;
+    SDL_Texture *easyText = nullptr;
+    SDL_Texture *mediumText = nullptr;
+    SDL_Texture *hardText = nullptr;
+    SDL_Texture *cotText = nullptr;
     std::unique_ptr<GameState> state;
 
     ~Game();
@@ -62,4 +66,6 @@ public:
     void run();
     void renderScore(ScoreLabel &label, int score, const SDL_Rect &image);
     void renderFitted(SDL_Texture *texture, const SDL_Rect &area);
+    void renderMatch();
+    bool placeMark(int row, int col);
 };

@@ -1,4 +1,5 @@
 #include "BoardDirector.h"
+#include "Bot.h"
 #include "Game.h"
 #include "SdlBoardBuilder.h"
 
@@ -101,6 +102,11 @@ int main(int argc, char *argv[])
     if (!boardRulesHold())
     {
         std::cerr << "board rules check failed" << std::endl;
+        return 1;
+    }
+    if (!botRulesHold())
+    {
+        std::cerr << "bot rules check failed" << std::endl;
         return 1;
     }
     Game game;

@@ -5,6 +5,7 @@ SRCS = \
 	src/Button.cpp \
 	src/Player.cpp \
 	src/Board.cpp \
+	src/Bot.cpp \
 	src/SdlBoardBuilder.cpp \
 	src/BoardDirector.cpp \
 	src/SdlBoardDrawBuilder.cpp \

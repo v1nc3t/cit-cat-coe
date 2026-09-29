@@ -23,7 +23,7 @@ void HomepageState::render(Game &game)
     SDL_RenderCopy(game.renderer, game.textures["title"], nullptr, &game.titleRect);
     SDL_RenderCopy(game.renderer, game.textures["cat_stand"], nullptr, &game.catStandRect);
     SDL_RenderCopy(game.renderer, game.textures["twoPlayer_BG"], nullptr, &game.twoPlayerRect);
-    SDL_RenderCopy(game.renderer, game.textures["onePlayer_BG"], nullptr, &game.onePlayerRect);
+    game.renderFitted(game.cotText, game.onePlayerRect);
     game.onePlayerButton.renderButton(game.renderer);
     game.twoPlayerButton.renderButton(game.renderer);
 }

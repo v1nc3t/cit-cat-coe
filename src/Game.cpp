@@ -1,8 +1,10 @@
 #include "Game.h"
 
 #include "BoardDirector.h"
+#include "BoardDrawDirector.h"
 #include "HomepageState.h"
 #include "SdlBoardBuilder.h"
+#include "SdlBoardDrawBuilder.h"
 
 #include <algorithm>
 #include <iostream>
@@ -66,8 +68,20 @@ Game::~Game()
         SDL_DestroyTexture(citWinText);
     if (coeWinText)
         SDL_DestroyTexture(coeWinText);
+    if (easyText)
+        SDL_DestroyTexture(easyText);
+    if (mediumText)
+        SDL_DestroyTexture(mediumText);
+    if (hardText)
+        SDL_DestroyTexture(hardText);
+    if (cotText)
+        SDL_DestroyTexture(cotText);
     citWinText = nullptr;
     coeWinText = nullptr;
+    easyText = nullptr;
+    mediumText = nullptr;
+    hardText = nullptr;
+    cotText = nullptr;
     if (winFont_)
         TTF_CloseFont(winFont_);
     if (font_)
@@ -102,15 +116,14 @@ bool Game::init()
     }
     ttfReady_ = true;
     const char *scoreFonts[] = {
-        "assets/fonts/Roboto-Regular.ttf",
-        "/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Regular.ttf",
-        "C:/Windows/Fonts/Roboto-Regular.ttf",
+        "assets/fonts/Roboto-Light.ttf",
+        "/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Light.ttf",
+        "C:/Windows/Fonts/Roboto-Light.ttf",
     };
     const char *winFonts[] = {
-        "assets/fonts/LiberationMono-Regular.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-        "C:/Windows/Fonts/cour.ttf",
+        "assets/fonts/RobotoMono-Light.ttf",
+        "/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/RobotoMono-Light.ttf",
+        "C:/Windows/Fonts/RobotoMono-Light.ttf",
     };
     font_ = openFont(scoreFonts, sizeof(scoreFonts) / sizeof(scoreFonts[0]), 42);
     winFont_ = openFont(winFonts, sizeof(winFonts) / sizeof(winFonts[0]), 28);
@@ -120,7 +133,7 @@ bool Game::init()
         return false;
     }
 
-    window_ = SDL_CreateWindow("Cit Cat Coe", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+    window_ = SDL_CreateWindow("cit cat coe", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     if (!window_)
     {
         std::cerr << "Window could not be created! SDL_Error: " << SDL_GetError() << std::endl;
@@ -155,7 +168,6 @@ bool Game::init()
         {"cat_stand", "assets/cat_stand.bmp"},
         {"cat_sit", "assets/cat_sit.bmp"},
         {"twoPlayer_BG", "assets/twoplayer.bmp"},
-        {"onePlayer_BG", "assets/twoplayer.bmp"},
         {"backButton_BG", "assets/back.bmp"},
         {"playAgain", "assets/playAgain.bmp"},
         {"cit", "assets/cit.bmp"},
@@ -191,9 +203,13 @@ bool Game::init()
     backButton = Button(backRect, black);
     playAgainButton = Button(playAgainRect, black);
 
-    citWinText = makeText(renderer, winFont_, "CIT WINS");
-    coeWinText = makeText(renderer, winFont_, "COE WINS");
-    if (!citWinText || !coeWinText)
+    citWinText = makeText(renderer, winFont_, "cit wins");
+    coeWinText = makeText(renderer, winFont_, "coe wins");
+    easyText = makeText(renderer, font_, "easy");
+    mediumText = makeText(renderer, font_, "medium");
+    hardText = makeText(renderer, font_, "hard");
+    cotText = makeText(renderer, font_, "cot");
+    if (!citWinText || !coeWinText || !easyText || !mediumText || !hardText || !cotText)
     {
         std::cerr << "Could not render win text. TTF_Error: " << TTF_GetError() << std::endl;
         return false;
@@ -267,4 +283,60 @@ void Game::renderFitted(SDL_Texture *texture, const SDL_Rect &area)
     const int destH = static_cast<int>(height * scale);
     const SDL_Rect dest = {area.x + (area.w - destW) / 2, area.y + (area.h - destH) / 2, destW, destH};
     SDL_RenderCopy(renderer, texture, nullptr, &dest);
+}
+
+void Game::renderMatch()
+{
+    SdlBoardDrawBuilder drawBuilder(board, player);
+    BoardDrawDirector().draw(drawBuilder);
+
+    SDL_RenderCopy(renderer, textures["backButton_BG"], nullptr, &backRect);
+    backButton.renderButton(renderer);
+    SDL_RenderCopy(renderer, textures["cat_sit"], nullptr, &catSitRect);
+
+    if (board.isFull())
+    {
+        SDL_RenderCopy(renderer, textures["playAgain"], nullptr, &playAgainRect);
+        playAgainButton.renderButton(renderer);
+        SDL_RenderCopy(renderer, textures["cit"], nullptr, &citRect);
+        SDL_RenderCopy(renderer, textures["coe"], nullptr, &coeRect);
+    }
+    else if (player.winner == MARK_NONE)
+    {
+        SDL_RenderCopy(renderer, textures[player.mark == MARK_O ? "cit_turn" : "cit"], nullptr, &citRect);
+        SDL_RenderCopy(renderer, textures[player.mark == MARK_O ? "coe" : "coe_turn"], nullptr, &coeRect);
+    }
+    else
+    {
+        SDL_RenderCopy(renderer, textures["playAgain"], nullptr, &playAgainRect);
+        playAgainButton.renderButton(renderer);
+        if (player.winner == MARK_O)
+            renderFitted(citWinText, citRect);
+        else
+            SDL_RenderCopy(renderer, textures["cit"], nullptr, &citRect);
+        if (player.winner == MARK_X)
+            renderFitted(coeWinText, coeRect);
+        else
+            SDL_RenderCopy(renderer, textures["coe"], nullptr, &coeRect);
+    }
+    renderScore(citScoreLabel, citScore, citRect);
+    renderScore(coeScoreLabel, coeScore, coeRect);
+}
+
+bool Game::placeMark(int row, int col)
+{
+    if (player.winner != MARK_NONE || row < 0 || col < 0 || row > 2 || col > 2)
+        return false;
+    if (!board.fillCell(row, col, player.mark))
+        return false;
+    if (board.checkWin(player))
+    {
+        player.setWinner();
+        if (player.winner == MARK_O)
+            citScore++;
+        else
+            coeScore++;
+    }
+    player.switchPlayer();
+    return true;
 }
